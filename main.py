@@ -25,31 +25,50 @@ id2channel = fetch_id2name('channels.list', 'channels')
 id2user = fetch_id2name('users.list', 'members')
 
 
-def convert(msg):
+def fetch_channel_name(channel_id):
     global id2channel
+    if channel_id not in id2channel:
+        id2channel = fetch_id2name('channels.list', 'channels')
+    return id2channel[channel_id]
+
+
+def convert(msg):
 
     subtype = msg['subtype']
     if subtype == 'message_deleted':
         pre = msg['previous_message']
-        channel = id2channel[msg['channel']]
+        channel = fetch_channel_name(msg['channel'])
         user = id2user[pre['user']]
 
-        return ('{user}さんが{channel}で'
-                '「{text}」という発言を削除しました')\
-            .format(user=user, channel=channel, text=pre['text'])
+        return dict(text=('{user}さんが{channel}で'
+                          '「{text}」という発言を削除しました').
+                    format(user=user, channel=channel, text=pre['text'])
+                    )
+
     if subtype.startswith('channel'):
         user = msg['user_profile']['name']
-        channel = msg['channel']
-        if channel not in id2channel:
-            id2channel = fetch_id2name('channels.list', 'channels')
+        channel = fetch_channel_name(msg['channel'])
 
-        channel = id2channel[channel]
         if subtype == 'channel_join':
-            return ('{user}さんが{channel}にjoinしました')\
-                .format(user=user, channel=channel)
+            return dict(
+                text=('{user}さんが{channel}にjoinしました').
+                format(user=user, channel=channel)
+            )
         elif subtype == 'channel_archive':
-            return ('{user}さんが{channel}をアーカイブしました')\
-                .format(user=user, channel=channel)
+            return dict(
+                text=('{user}さんが{channel}をアーカイブしました').
+                format(user=user, channel=channel)
+            )
+
+    if subtype.endswith('pinned_item'):
+        user = id2user[msg['user']]
+        channel = fetch_channel_name(msg['channel'])
+        event = 'ピン留めしました' if subtype == 'pinned_item' else 'ピンを外しました'
+        return dict(
+            text=('{user}さんが{channel}で{event}').
+            format(user=user, channel=channel, event=event),
+            attachments=msg['attachments']
+        )
 
     return msg['text']
 
@@ -60,17 +79,17 @@ def main():
         while True:
             messages = sc.rtm_read()
             for msg in messages:
+                logger.info(msg)
                 if msg.get('type', '') != 'message':
                     continue
                 if 'subtype' not in msg:
                     continue
                 if msg['subtype'] == 'bot_message':
                     continue
-                logger.info(msg)
-                # https://api.slack.com/events/message
 
-                text = convert(msg)
-                slack.notify(text=text, username='Big Brother')
+                # https://api.slack.com/events/message
+                data = convert(msg)
+                slack.notify(**data, username='Big Brother')
 
             time.sleep(1)
     else:
