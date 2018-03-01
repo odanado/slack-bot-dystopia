@@ -1,5 +1,6 @@
 import os
 import time
+import traceback
 
 import slackweb
 from logzero import logger
@@ -38,23 +39,31 @@ def convert(msg):
     return msg['text']
 
 
-if sc.rtm_connect(with_team_state=False):
-    logger.info('start!')
-    while True:
-        messages = sc.rtm_read()
-        for msg in messages:
-            if msg.get('type', '') != 'message':
-                continue
-            if 'subtype' not in msg:
-                continue
-            if msg['subtype'] == 'bot_message':
-                continue
-            logger.info(msg)
-            # https://api.slack.com/events/message
+def main():
+    if sc.rtm_connect(with_team_state=False):
+        logger.info('start!')
+        while True:
+            messages = sc.rtm_read()
+            for msg in messages:
+                if msg.get('type', '') != 'message':
+                    continue
+                if 'subtype' not in msg:
+                    continue
+                if msg['subtype'] == 'bot_message':
+                    continue
+                logger.info(msg)
+                # https://api.slack.com/events/message
 
-            text = convert(msg)
-            slack.notify(text=text, username='Big Brother')
+                text = convert(msg)
+                slack.notify(text=text, username='Big Brother')
 
-        time.sleep(1)
-else:
-    print("Connection Failed")
+            time.sleep(1)
+    else:
+        print("Connection Failed")
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except:  # NOQA
+        logger.error(traceback.format_exc())

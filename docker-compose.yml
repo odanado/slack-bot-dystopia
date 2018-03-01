@@ -6,3 +6,4 @@ services:
             - .:/src
         env_file:
             - .env
+        restart: always
