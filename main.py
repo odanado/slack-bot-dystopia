@@ -26,6 +26,8 @@ id2user = fetch_id2name('users.list', 'members')
 
 
 def convert(msg):
+    global id2channel
+
     subtype = msg['subtype']
     if subtype == 'message_deleted':
         pre = msg['previous_message']
@@ -35,6 +37,19 @@ def convert(msg):
         return ('{user}さんが{channel}で'
                 '「{text}」という発言を削除しました')\
             .format(user=user, channel=channel, text=pre['text'])
+    if subtype.startswith('channel'):
+        user = msg['user_profile']['name']
+        channel = msg['channel']
+        if channel not in id2channel:
+            id2channel = fetch_id2name('channels.list', 'channels')
+
+        channel = id2channel[channel]
+        if subtype == 'channel_join':
+            return ('{user}さんが{channel}にjoinしました')\
+                .format(user=user, channel=channel)
+        elif subtype == 'channel_archive':
+            return ('{user}さんが{channel}をアーカイブしました')\
+                .format(user=user, channel=channel)
 
     return msg['text']
 
