@@ -89,6 +89,7 @@ def main():
 
                 # https://api.slack.com/events/message
                 data = convert(msg)
+                logger.info(data)
                 slack.notify(**data, username='Big Brother')
 
             time.sleep(1)
